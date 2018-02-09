@@ -27,7 +27,7 @@ interface IAjaxOptions {
  * @param val
  * @returns {boolean}
  */
-export const isObj = (val: any) =>
+const isObj = (val: any) =>
   typeof val === 'object' && !isArr(val) && !(window as any).isNull(val);
 
 /**
@@ -35,21 +35,21 @@ export const isObj = (val: any) =>
  * @param val
  * @returns {boolean}
  */
-export const isArr = (val: any) => Array.isArray(val);
+const isArr = (val: any) => Array.isArray(val);
 
 /**
  * @description Check if value is of type 'function'
  * @param val
  * @returns {boolean}
  */
-export const isFunc = (val: any) => typeof val === 'function';
+const isFunc = (val: any) => typeof val === 'function';
 
 /**
  * @description Iterate over each key of an object
  * @param obj
  * @param callback
  */
-export const eachKey = (obj: any, callback: (key: string, prop?: any, index?: number) => void) => {
+const eachKey = (obj: any, callback: (key: string, prop?: any, index?: number) => void) => {
   Object.keys(obj).forEach((key: string, index: number) =>
     callback(key, (obj as any)[key], index));
 };
@@ -86,7 +86,7 @@ const getAjaxOptions = (options: IAjaxOptions) => {
  * @param {{interval?: number}} options
  * @returns {(handler: (resolve: (proceed: boolean) => void) => void, complete: () => void) => void}
  */
-export const poll = (options: { interval?: number, complete?: () => void } = {}) => {
+const poll = (options: { interval?: number, complete?: () => void } = {}) => {
   const interval = options.interval || 0;
   const complete = isFunc(options.complete) ? options.complete : () => true;
   return (handler: (resolve: (proceed: boolean) => void) => void) => {
@@ -106,7 +106,7 @@ export const poll = (options: { interval?: number, complete?: () => void } = {})
  * @param objectData
  * @param requiredKeys
  */
-export const filterObjectData = (objectData: any, requiredKeys: any) => {
+const filterObjectData = (objectData: any, requiredKeys: any) => {
   const filteredObject = {};
   eachKey(objectData, (key, value) => {
     if (requiredKeys.indexOf(key) === -1) {
@@ -122,7 +122,7 @@ export const filterObjectData = (objectData: any, requiredKeys: any) => {
  * @param arrayData
  * @param requiredKeys
  */
-export const filterArrayOfObjectsData = (arrayData: any, requiredKeys: any) => {
+const filterArrayOfObjectsData = (arrayData: any, requiredKeys: any) => {
   return arrayData.reduce((accumulator: any, item: any) => {
     const filteredObject = filterObjectData(item, requiredKeys);
     accumulator.push(filteredObject);
@@ -135,7 +135,7 @@ export const filterArrayOfObjectsData = (arrayData: any, requiredKeys: any) => {
  * @param objectData
  * @param requiredKey
  */
-export const pluckObjectDataToArray = (objectData: any, requiredKey: any) => {
+const pluckObjectDataToArray = (objectData: any, requiredKey: any) => {
   const filteredArray: any = [];
   eachKey(objectData, (key, value) => {
     if (requiredKey !== key) {
@@ -151,7 +151,7 @@ export const pluckObjectDataToArray = (objectData: any, requiredKey: any) => {
  * @param arrayData
  * @param requiredKey
  */
-export const pluckArrayOfObjectsDataToArray = (arrayData: any, requiredKey: any) => {
+const pluckArrayOfObjectsDataToArray = (arrayData: any, requiredKey: any) => {
   return arrayData.reduce((accumulator: any, item: any) => {
     const filteredArray = pluckObjectDataToArray(item, requiredKey);
     accumulator = [...accumulator, ...filteredArray];
@@ -163,7 +163,7 @@ export const pluckArrayOfObjectsDataToArray = (arrayData: any, requiredKey: any)
  * @description Ajax handler
  * @param options
  */
-export const ajax = (options: IAjaxOptions) => {
+const ajax = (options: IAjaxOptions) => {
   const ajaxOptions = getAjaxOptions(options);
   return $.ajax(ajaxOptions);
 }
@@ -172,7 +172,7 @@ export const ajax = (options: IAjaxOptions) => {
  * @description Reactive ajax
  * @param options
  */
-export const reactiveAjax = function (options: IAjaxOptions) {
+export default function reactiveAjax(options: IAjaxOptions) {
   const assign = (Object as any).assign;
   const originalOptions = assign({}, options);
   let modifiedOptions: IAjaxOptions = assign({}, originalOptions);
