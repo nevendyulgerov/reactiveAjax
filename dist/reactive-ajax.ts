@@ -28,7 +28,7 @@ interface IAjaxOptions {
  * @returns {boolean}
  */
 const isObj = (val: any) =>
-  typeof val === 'object' && !isArr(val) && !(window as any).isNull(val);
+  typeof val === 'object' && !isArr(val) && !isNull(val);
 
 /**
  * @description Check if value is of type 'array'
@@ -43,6 +43,13 @@ const isArr = (val: any) => Array.isArray(val);
  * @returns {boolean}
  */
 const isFunc = (val: any) => typeof val === 'function';
+
+/**
+ * @description Check if value is of type 'null'
+ * @param val
+ * @returns {boolean}
+ */
+const isNull = (val: any) => val === null;
 
 /**
  * @description Iterate over each key of an object
@@ -176,9 +183,37 @@ export default function reactiveAjax(options: IAjaxOptions) {
   const assign = (Object as any).assign;
   const originalOptions = assign({}, options);
   let modifiedOptions: IAjaxOptions = assign({}, originalOptions);
-  let IsRequestFullfilled = false;
+  let isRequestFullfilled = false;
   let isRequestAborted = false;
   let request: any;
+  const requestTime = {
+    start: -1,
+    end: -1,
+    duration: -1
+  };
+
+  /**
+   * @description Get request time
+   * @returns {number}
+   */
+  const getRequestTime = () => requestTime.end - requestTime.start;
+
+  /**
+   * @description Get request elapsed time
+   * @returns {number}
+   */
+  const getRequestElapsedTime = () => new Date().getTime() - requestTime.start;
+
+  /**
+   * @description Get request duration
+   * @returns {number}
+   */
+  const getRequestDuration = () => requestTime.duration = requestTime.end - requestTime.start;
+
+  /**
+   * @description Get request end time
+   */
+  const getRequestEndTime = () => requestTime.end = new Date().getTime();
 
   /**
    * @description Normalize callback
@@ -186,11 +221,13 @@ export default function reactiveAjax(options: IAjaxOptions) {
   const normalizeCallback = () => {
     modifiedOptions = assign(modifiedOptions, {
       callback(err: any, res: any) {
+        getRequestEndTime();
+        getRequestDuration();
         let filteredData;
         if (isRequestAborted) {
           return false;
         }
-        IsRequestFullfilled = true;
+        isRequestFullfilled = true;
         if (err) {
           return options.callback(err);
         }
@@ -203,16 +240,18 @@ export default function reactiveAjax(options: IAjaxOptions) {
 
   return {
     /**
-     * @@description Filter
+     * @@description Extract
      * @param filters
      */
-    filter(filters: string[]) {
+    extract(filters: string[]) {
       options.callback = (err, res) => {
+        getRequestEndTime();
+        getRequestDuration();
         let filteredData;
         if (isRequestAborted) {
           return false;
         }
-        IsRequestFullfilled = true;
+        isRequestFullfilled = true;
         if (err) {
           return options.callback(err);
         }
@@ -229,16 +268,44 @@ export default function reactiveAjax(options: IAjaxOptions) {
       return this;
     },
     /**
+     * @description Filter
+     * @param {() => void} handler
+     */
+    filter(handler: (item: any, index?: number) => void) {
+      options.callback = (err, res) => {
+        getRequestEndTime();
+        getRequestDuration();
+        let filteredData;
+        if (isRequestAborted) {
+          return false;
+        }
+        isRequestFullfilled = true;
+        if (err) {
+          return options.callback(err);
+        }
+
+        if (isArr(res)) {
+          filteredData = res.filter(handler);
+        }
+
+        originalOptions.callback(undefined, filteredData);
+      }
+      modifiedOptions = assign({}, options);
+      return this;
+    },
+    /**
      * @description Pluck
      * @param filterKey
      */
     pluck(filterKey: string) {
       options.callback = (err, res) => {
+        getRequestEndTime();
+        getRequestDuration();
         let filteredData;
         if (isRequestAborted) {
           return false;
         }
-        IsRequestFullfilled = true;
+        isRequestFullfilled = true;
         if (err) {
           return options.callback(err);
         }
@@ -260,26 +327,33 @@ export default function reactiveAjax(options: IAjaxOptions) {
      * @param complete
      * @param interval
      */
-    watch(handler: any, complete = (isRequestFullfilled: boolean) => {
+    watch(handler: any, complete = (options: { isRequestFullfilled: boolean, isRequestAborted: boolean, requestTime: any }) => {
     }, interval = 100) {
-      const poller = poll({
+      const watcher = poll({
         interval,
-        complete: () => complete(IsRequestFullfilled)
+        complete: () => complete({ isRequestFullfilled, isRequestAborted, requestTime })
       });
-      poller(resolve => handler(resolve, IsRequestFullfilled, function abort() {
-        if (IsRequestFullfilled) {
-          return false;
-        }
-        isRequestAborted = true;
-        request.abort();
-        resolve(false);
-      }));
+      watcher(resolve => {
+        handler(resolve, {
+          isRequestFullfilled,
+          getRequestElapsedTime
+        }, function abort() {
+          if (isRequestFullfilled) {
+            return false;
+          }
+          isRequestAborted = true;
+          request.abort();
+          requestTime.end = new Date().getTime();
+          resolve(false);
+        })
+      });
       return this;
     },
     /**
      * @description Run
      */
     run() {
+      requestTime.start = new Date().getTime();
       request = ajax(modifiedOptions);
       return this;
     },
