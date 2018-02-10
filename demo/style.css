@@ -1,0 +1,25 @@
+
+body {
+  padding: 0;
+  margin: 0;
+  background-color: #efefef;
+  font-family: Consolas, monospace;
+}
+
+[data-app] {
+  width: 960px;
+  min-height: 80px;
+  max-width: calc(100% - 30px);
+  margin: 30px auto 0 auto;
+}
+
+button[data-trigger] {
+  border: 0;
+  outline: 0;
+  padding: 15px 25px;
+  background-color: tomato;
+  color: #fff;
+  border-radius: 2px;
+  box-shadow: 1px 1px 0 1px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+}
