@@ -5,7 +5,7 @@ const apiEndpoint: string = 'https://ghibliapi.herokuapp.com';
 
 // define request handler
 const handleRequest = (resolve: any, options: any, abort: any) => {
-  if (!options.isRequestFullfilled && options.getRequestElapsedTime() > 100) {
+  if (!options.isRequestFullfilled && options.getRequestElapsedTime() > 1000) {
     return abort();
   }
   resolve(!options.isRequestFullfilled);

@@ -81,7 +81,7 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 var apiEndpoint = 'https://ghibliapi.herokuapp.com';
 // define request handler
 var handleRequest = function (resolve, options, abort) {
-    if (!options.isRequestFullfilled && options.getRequestElapsedTime() > 100) {
+    if (!options.isRequestFullfilled && options.getRequestElapsedTime() > 1000) {
         return abort();
     }
     resolve(!options.isRequestFullfilled);

@@ -76,17 +76,7 @@ module.exports = __webpack_require__(1);
 
 "use strict";
 Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "isObj", function() { return isObj; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "isArr", function() { return isArr; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "isFunc", function() { return isFunc; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "eachKey", function() { return eachKey; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "poll", function() { return poll; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "filterObjectData", function() { return filterObjectData; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "filterArrayOfObjectsData", function() { return filterArrayOfObjectsData; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "pluckObjectDataToArray", function() { return pluckObjectDataToArray; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "pluckArrayOfObjectsDataToArray", function() { return pluckArrayOfObjectsDataToArray; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "ajax", function() { return ajax; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "reactiveAjax", function() { return reactiveAjax; });
+/* harmony export (immutable) */ __webpack_exports__["default"] = reactiveAjax;
 /**
  * Module: Reactive Ajax
  * Author: Neven Dyulgerov
@@ -100,7 +90,7 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
  * @returns {boolean}
  */
 var isObj = function (val) {
-    return typeof val === 'object' && !isArr(val) && !window.isNull(val);
+    return typeof val === 'object' && !isArr(val) && !isNull(val);
 };
 /**
  * @description Check if value is of type 'array'
@@ -114,6 +104,12 @@ var isArr = function (val) { return Array.isArray(val); };
  * @returns {boolean}
  */
 var isFunc = function (val) { return typeof val === 'function'; };
+/**
+ * @description Check if value is of type 'null'
+ * @param val
+ * @returns {boolean}
+ */
+var isNull = function (val) { return val === null; };
 /**
  * @description Iterate over each key of an object
  * @param obj
@@ -235,24 +231,50 @@ var ajax = function (options) {
  * @description Reactive ajax
  * @param options
  */
-var reactiveAjax = function (options) {
+function reactiveAjax(options) {
     var assign = Object.assign;
     var originalOptions = assign({}, options);
     var modifiedOptions = assign({}, originalOptions);
-    var IsRequestFullfilled = false;
+    var isRequestFullfilled = false;
     var isRequestAborted = false;
     var request;
+    var requestTime = {
+        start: -1,
+        end: -1,
+        duration: -1
+    };
+    /**
+     * @description Get request time
+     * @returns {number}
+     */
+    var getRequestTime = function () { return requestTime.end - requestTime.start; };
+    /**
+     * @description Get request elapsed time
+     * @returns {number}
+     */
+    var getRequestElapsedTime = function () { return new Date().getTime() - requestTime.start; };
+    /**
+     * @description Get request duration
+     * @returns {number}
+     */
+    var getRequestDuration = function () { return requestTime.duration = requestTime.end - requestTime.start; };
+    /**
+     * @description Get request end time
+     */
+    var getRequestEndTime = function () { return requestTime.end = new Date().getTime(); };
     /**
      * @description Normalize callback
      */
     var normalizeCallback = function () {
         modifiedOptions = assign(modifiedOptions, {
             callback: function (err, res) {
+                getRequestEndTime();
+                getRequestDuration();
                 var filteredData;
                 if (isRequestAborted) {
                     return false;
                 }
-                IsRequestFullfilled = true;
+                isRequestFullfilled = true;
                 if (err) {
                     return options.callback(err);
                 }
@@ -263,16 +285,18 @@ var reactiveAjax = function (options) {
     normalizeCallback();
     return {
         /**
-         * @@description Filter
+         * @@description Extract
          * @param filters
          */
-        filter: function (filters) {
+        extract: function (filters) {
             options.callback = function (err, res) {
+                getRequestEndTime();
+                getRequestDuration();
                 var filteredData;
                 if (isRequestAborted) {
                     return false;
                 }
-                IsRequestFullfilled = true;
+                isRequestFullfilled = true;
                 if (err) {
                     return options.callback(err);
                 }
@@ -288,16 +312,42 @@ var reactiveAjax = function (options) {
             return this;
         },
         /**
+         * @description Filter
+         * @param {() => void} handler
+         */
+        filter: function (handler) {
+            options.callback = function (err, res) {
+                getRequestEndTime();
+                getRequestDuration();
+                var filteredData;
+                if (isRequestAborted) {
+                    return false;
+                }
+                isRequestFullfilled = true;
+                if (err) {
+                    return options.callback(err);
+                }
+                if (isArr(res)) {
+                    filteredData = res.filter(handler);
+                }
+                originalOptions.callback(undefined, filteredData);
+            };
+            modifiedOptions = assign({}, options);
+            return this;
+        },
+        /**
          * @description Pluck
          * @param filterKey
          */
         pluck: function (filterKey) {
             options.callback = function (err, res) {
+                getRequestEndTime();
+                getRequestDuration();
                 var filteredData;
                 if (isRequestAborted) {
                     return false;
                 }
-                IsRequestFullfilled = true;
+                isRequestFullfilled = true;
                 if (err) {
                     return options.callback(err);
                 }
@@ -319,32 +369,39 @@ var reactiveAjax = function (options) {
          * @param interval
          */
         watch: function (handler, complete, interval) {
-            if (complete === void 0) { complete = function (isRequestFullfilled) {
+            if (complete === void 0) { complete = function (options) {
             }; }
             if (interval === void 0) { interval = 100; }
-            var poller = poll({
+            var watcher = poll({
                 interval: interval,
-                complete: function () { return complete(IsRequestFullfilled); }
+                complete: function () { return complete({ isRequestFullfilled: isRequestFullfilled, isRequestAborted: isRequestAborted, requestTime: requestTime }); }
             });
-            poller(function (resolve) { return handler(resolve, IsRequestFullfilled, function abort() {
-                if (IsRequestFullfilled) {
-                    return false;
-                }
-                isRequestAborted = true;
-                request.abort();
-                resolve(false);
-            }); });
+            watcher(function (resolve) {
+                handler(resolve, {
+                    isRequestFullfilled: isRequestFullfilled,
+                    getRequestElapsedTime: getRequestElapsedTime
+                }, function abort() {
+                    if (isRequestFullfilled) {
+                        return false;
+                    }
+                    isRequestAborted = true;
+                    request.abort();
+                    requestTime.end = new Date().getTime();
+                    resolve(false);
+                });
+            });
             return this;
         },
         /**
          * @description Run
          */
         run: function () {
+            requestTime.start = new Date().getTime();
             request = ajax(modifiedOptions);
             return this;
         },
     };
-};
+}
 
 
 /***/ })
